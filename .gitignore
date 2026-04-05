@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+**/.env
+!**/.env.example
+
+# Build outputs
+**/dist/
+**/build/
+**/.next/
+**/out/
+
+# Prisma generated
+**/generated/prisma/
+
+# Database
+*.db
+*.db-journal
+**/prisma/dev.db*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+**/next-env.d.ts
+
+# Nested git backup
+**/.git-backup/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+
+# Vercel
+.vercel/
+
+# Testing
+coverage/
+
+# Debug artifacts
+**/tsc_errors.txt
