@@ -59,11 +59,21 @@ export const api = {
         if (!res.ok) throw new Error('API Error');
     },
 
-    async bulkCreateContacts(contacts: CreateContactInput[]): Promise<BulkImportResult> {
+    async bulkCreateContacts(contacts: CreateContactInput[], rowOffset = 0): Promise<BulkImportResult> {
         const res = await fetch(`${API_URL}/contacts/bulk`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contacts }),
+            body: JSON.stringify({ contacts, rowOffset }),
+        });
+        if (!res.ok) throw new Error('API Error');
+        return res.json();
+    },
+
+    async bulkDeleteContacts(ids: string[]): Promise<{ deletedCount: number }> {
+        const res = await fetch(`${API_URL}/contacts/bulk-delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids }),
         });
         if (!res.ok) throw new Error('API Error');
         return res.json();

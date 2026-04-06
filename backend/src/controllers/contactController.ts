@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as contactService from '../services/contactService';
 import { createContactSchema, updateContactSchema } from '../validators/contactSchema';
+import { z } from 'zod';
 
 export const getContacts = async (req: Request, res: Response) => {
     try {
@@ -77,17 +78,33 @@ export const deleteContact = async (req: Request, res: Response) => {
     }
 };
 
+export const bulkDeleteContacts = async (req: Request, res: Response) => {
+    try {
+        const schema = z.object({
+            ids: z.array(z.string().cuid()).min(1).max(500),
+        });
+
+        const { ids } = schema.parse(req.body);
+        const result = await contactService.bulkDeleteContacts(ids);
+        res.json({ deletedCount: result.count });
+    } catch (error: any) {
+        res.status(400).json({ error: error.errors || 'Invalid data' });
+    }
+};
+
 export const bulkCreateContacts = async (req: Request, res: Response) => {
     try {
-        const { contacts } = req.body;
+        const { contacts, rowOffset = 0 } = req.body;
+        const maxBulkSize = Number(process.env.BULK_IMPORT_MAX || 500);
+        const safeOffset = Number.isFinite(Number(rowOffset)) ? Math.max(0, Number(rowOffset)) : 0;
 
         if (!Array.isArray(contacts) || contacts.length === 0) {
             res.status(400).json({ error: 'contacts array is required' });
             return;
         }
 
-        if (contacts.length > 500) {
-            res.status(400).json({ error: 'Maximum 500 contacts per request' });
+        if (contacts.length > maxBulkSize) {
+            res.status(400).json({ error: `Maximum ${maxBulkSize} contacts per request` });
             return;
         }
 
@@ -99,7 +116,7 @@ export const bulkCreateContacts = async (req: Request, res: Response) => {
             if (result.success) {
                 validContacts.push(result.data);
             } else {
-                errors.push({ row: index + 1, errors: result.error.flatten().fieldErrors });
+                errors.push({ row: safeOffset + index + 1, errors: result.error.flatten().fieldErrors });
             }
         });
 

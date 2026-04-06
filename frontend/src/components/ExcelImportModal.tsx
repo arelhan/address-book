@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Upload, FileSpreadsheet, ChevronLeft, AlertCircle, CheckCircle2, Download } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { api } from '../lib/api';
-import { BulkImportResult, CreateContactInput } from '../types';
+import { BulkImportResult } from '../types';
 import {
     parseExcelFile,
     autoDetectMapping,
@@ -19,6 +19,7 @@ interface Props {
 }
 
 type Step = 'upload' | 'preview' | 'result';
+const IMPORT_CHUNK_SIZE = 300;
 
 export function ExcelImportModal({ isOpen, onClose, onImportComplete }: Props) {
     const [step, setStep] = useState<Step>('upload');
@@ -28,6 +29,7 @@ export function ExcelImportModal({ isOpen, onClose, onImportComplete }: Props) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [result, setResult] = useState<BulkImportResult | null>(null);
+    const [importProgress, setImportProgress] = useState<{ processed: number; total: number; success: number; failed: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const reset = () => {
@@ -38,6 +40,7 @@ export function ExcelImportModal({ isOpen, onClose, onImportComplete }: Props) {
         setLoading(false);
         setError('');
         setResult(null);
+        setImportProgress(null);
     };
 
     const handleClose = () => {
@@ -107,17 +110,49 @@ export function ExcelImportModal({ isOpen, onClose, onImportComplete }: Props) {
 
         setLoading(true);
         setError('');
+        setImportProgress({ processed: 0, total: contacts.length, success: 0, failed: 0 });
         try {
-            const res = await api.bulkCreateContacts(contacts);
-            setResult(res);
+            const aggregated: BulkImportResult = {
+                summary: {
+                    total: contacts.length,
+                    success: 0,
+                    failed: 0,
+                },
+                errors: [],
+            };
+
+            for (let start = 0; start < contacts.length; start += IMPORT_CHUNK_SIZE) {
+                const chunk = contacts.slice(start, start + IMPORT_CHUNK_SIZE);
+                const chunkResult = await api.bulkCreateContacts(chunk, start);
+
+                aggregated.summary.success += chunkResult.summary.success;
+                aggregated.summary.failed += chunkResult.summary.failed;
+
+                if (chunkResult.errors.length > 0) {
+                    aggregated.errors.push(...chunkResult.errors);
+                    if (aggregated.errors.length > 1000) {
+                        aggregated.errors = aggregated.errors.slice(0, 1000);
+                    }
+                }
+
+                setImportProgress({
+                    processed: Math.min(start + chunk.length, contacts.length),
+                    total: contacts.length,
+                    success: aggregated.summary.success,
+                    failed: aggregated.summary.failed,
+                });
+            }
+
+            setResult(aggregated);
             setStep('result');
-            if (res.summary.success > 0) {
+            if (aggregated.summary.success > 0) {
                 onImportComplete();
             }
         } catch {
-            setError('İçe aktarma sırasında bir hata oluştu.');
+            setError('İçe aktarma sırasında bir hata oluştu. Lütfen tekrar deneyin. Sorun devam ederse dosyayı daha küçük parçalara bölerek yükleyin.');
         } finally {
             setLoading(false);
+            setImportProgress(null);
         }
     };
 
@@ -258,6 +293,23 @@ export function ExcelImportModal({ isOpen, onClose, onImportComplete }: Props) {
                         </div>
                     )}
 
+                    {importProgress && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                            <div className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">
+                                İçe aktarma ilerlemesi: {importProgress.processed} / {importProgress.total}
+                            </div>
+                            <div className="w-full h-2 bg-blue-100 dark:bg-blue-950 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-[#007AFF] transition-all"
+                                    style={{ width: `${Math.max(2, Math.round((importProgress.processed / Math.max(importProgress.total, 1)) * 100))}%` }}
+                                />
+                            </div>
+                            <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                                Başarılı: {importProgress.success} | Hatalı: {importProgress.failed} | Parça boyutu: {IMPORT_CHUNK_SIZE}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex gap-3 pt-2">
                         <button
                             onClick={() => { setStep('upload'); setError(''); }}
@@ -299,7 +351,7 @@ export function ExcelImportModal({ isOpen, onClose, onImportComplete }: Props) {
                     {result.errors.length > 0 && (
                         <div>
                             <h3 className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 ml-1">
-                                Hatalı Satırlar
+                                Hatalı Satırlar {result.errors.length >= 1000 ? '(ilk 1000 gösteriliyor)' : ''}
                             </h3>
                             <div className="max-h-48 overflow-y-auto space-y-2 styled-scrollbar">
                                 {result.errors.map((err, i) => (

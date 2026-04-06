@@ -6,11 +6,13 @@ import { Phone, Building2, User } from 'lucide-react';
 
 interface Props {
     contact: Contact;
-    index: number;
     onClick: (contact: Contact) => void;
+    selectable?: boolean;
+    selected?: boolean;
+    onToggleSelect?: (id: string) => void;
 }
 
-export function ContactCard({ contact, index, onClick }: Props) {
+export function ContactCard({ contact, onClick, selectable = false, selected = false, onToggleSelect }: Props) {
     const getIcon = () => {
         if (contact.type === 'PERSON') return <User size={16} className="mr-1" />;
         return <Building2 size={16} className="mr-1" />;
@@ -22,14 +24,37 @@ export function ContactCard({ contact, index, onClick }: Props) {
     };
 
     const getVariant = () => {
-        return contact.type.toLowerCase() as any;
+        return contact.type === 'PERSON' ? 'person' : 'company';
     };
 
     return (
         <div
-            onClick={() => onClick(contact)}
+            onClick={() => {
+                if (selectable && onToggleSelect) {
+                    onToggleSelect(contact.id);
+                    return;
+                }
+                onClick(contact);
+            }}
             className="cursor-pointer rounded-[24px] bg-white dark:bg-[#1C1C1E] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:shadow-none border border-black/[0.04] dark:border-white/[0.04] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:bg-[#2C2C2E] hover:scale-[1.015] active:scale-[0.98] transition-all duration-300 flex flex-col relative group"
         >
+            {selectable && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleSelect?.(contact.id);
+                    }}
+                    aria-label={selected ? 'Seçimi kaldır' : 'Seç'}
+                    className={`absolute left-4 top-4 h-6 w-6 rounded-md border flex items-center justify-center transition-colors ${selected
+                        ? 'bg-[#007AFF] border-[#007AFF] text-white'
+                        : 'bg-white dark:bg-[#1C1C1E] border-gray-300 dark:border-zinc-600 text-transparent'
+                        }`}
+                >
+                    ✓
+                </button>
+            )}
+
             <div className="flex justify-between items-start mb-3">
                 <Badge variant={getVariant()}>
                     {getIcon()}

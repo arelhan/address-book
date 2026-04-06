@@ -1,0 +1,15 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+# Prisma on slim images may need openssl at runtime.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+
+# Pre-install dependencies into the image layer for faster first run.
+RUN npm ci
+
+EXPOSE 4000

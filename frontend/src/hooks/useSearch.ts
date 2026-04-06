@@ -2,13 +2,45 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import { Contact } from '../types';
 
+const SEARCH_STATE_KEY = 'address-book-search-state';
+
+function readStoredSearchState() {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const raw = window.sessionStorage.getItem(SEARCH_STATE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw) as {
+            query?: string;
+            results?: Contact[];
+            showingAll?: boolean;
+        };
+    } catch {
+        return null;
+    }
+}
+
 export function useSearch(delay = 300) {
-    const [query, setQuery] = useState('');
+    const stored = readStoredSearchState();
+    const [query, setQuery] = useState(stored?.query || '');
     const [debouncedQuery, setDebouncedQuery] = useState('');
-    const [results, setResults] = useState<Contact[]>([]);
+    const [results, setResults] = useState<Contact[]>(stored?.results || []);
     const [isLoading, setIsLoading] = useState(false);
     const [count, setCount] = useState(0);
-    const [showingAll, setShowingAll] = useState(false);
+    const [showingAll, setShowingAll] = useState(stored?.showingAll || false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        try {
+            window.sessionStorage.setItem(
+                SEARCH_STATE_KEY,
+                JSON.stringify({ query, results, showingAll })
+            );
+        } catch {
+            // Ignore persistence failures.
+        }
+    }, [query, results, showingAll]);
 
     // Başlangıçta toplam sayıyı çek
     const refreshCount = useCallback(async () => {

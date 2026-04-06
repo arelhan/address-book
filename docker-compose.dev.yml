@@ -1,8 +1,8 @@
-version: '3.8'
-
 services:
   backend:
-    image: node:20-slim
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
     working_dir: /app
     ports:
       - "4000:4000"
@@ -12,19 +12,20 @@ services:
       - ./backend:/app
       - backend-node-modules:/app/node_modules
     command: >
-      sh -c "apt-get update && apt-get install -y openssl &&
-             npm install &&
+      sh -c "if [ ! -d node_modules/.bin ]; then npm ci; fi &&
              npx prisma generate &&
              npx prisma db push &&
              npm run dev"
 
   frontend:
-    image: node:20-slim
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
     working_dir: /app
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:4000/api
+      - BACKEND_URL=http://backend:4000
       - WATCHPACK_POLLING=true
     volumes:
       - ./frontend:/app
@@ -32,7 +33,7 @@ services:
     depends_on:
       - backend
     command: >
-      sh -c "npm install && npm run dev"
+      sh -c "if [ ! -d node_modules/.bin ]; then npm ci; fi && npm run dev"
 
 volumes:
   backend-node-modules:

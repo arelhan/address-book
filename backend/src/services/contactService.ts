@@ -99,6 +99,22 @@ export const bulkCreateContacts = async (
     );
 };
 
+export const bulkDeleteContacts = async (ids: string[]) => {
+    const uniqueIds = Array.from(new Set(ids));
+
+    const [, deleted] = await prisma.$transaction([
+        prisma.contact.updateMany({
+            where: { parentId: { in: uniqueIds } },
+            data: { parentId: null },
+        }),
+        prisma.contact.deleteMany({
+            where: { id: { in: uniqueIds } },
+        }),
+    ]);
+
+    return deleted;
+};
+
 export const getContactChildren = async (id: string) => {
     return prisma.contact.findMany({
         where: { parentId: id },

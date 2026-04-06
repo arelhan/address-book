@@ -2,10 +2,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { Contact } from '@/types';
+import { Contact, CreateContactInput } from '@/types';
 import { Badge } from '@/components/ui/Badge';
-import { Phone, ArrowLeft, Trash2, Copy, Mail, MapPin, FileText, Users } from 'lucide-react';
+import { Phone, ArrowLeft, Trash2, Copy, Mail, MapPin, FileText, Users, Pencil } from 'lucide-react';
 import { HierarchyTree } from '@/components/HierarchyTree';
+import { Modal } from '@/components/ui/Modal';
+import { ContactForm } from '@/components/ContactForm';
 
 export default function ContactDetail() {
     const params = useParams();
@@ -13,6 +15,8 @@ export default function ContactDetail() {
     const id = params.id as string;
     const [contact, setContact] = useState<Contact | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
         if (id) api.getContact(id).then(setContact).catch(console.error);
@@ -29,6 +33,33 @@ export default function ContactDetail() {
         navigator.clipboard.writeText(text);
         setCopiedId(key);
         setTimeout(() => setCopiedId(null), 1500);
+    };
+
+    const toInitialData = (c: Contact): Partial<CreateContactInput> => ({
+        type: c.type,
+        name: c.name,
+        title: c.title || '',
+        department: c.department || '',
+        email: c.email || '',
+        address: c.address || '',
+        notes: c.notes || '',
+        parentId: c.parentId || null,
+        phones: c.phones.map(p => ({ number: p.number, label: p.label })),
+    });
+
+    const handleUpdate = async (data: CreateContactInput) => {
+        try {
+            setIsUpdating(true);
+            await api.updateContact(id, data);
+            const fresh = await api.getContact(id);
+            setContact(fresh);
+            setIsEditOpen(false);
+        } catch (err) {
+            console.error(err);
+            alert('Güncelleme sırasında hata oluştu.');
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     if (!contact) {
@@ -52,12 +83,20 @@ export default function ContactDetail() {
                     >
                         <ArrowLeft size={18} className="mr-1" /> Geri
                     </button>
-                    <button
-                        onClick={handleDelete}
-                        className="p-2.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] dark:text-[#FF453A] border border-black/5 dark:border-white/10 hover:bg-[#FF3B30]/10 dark:hover:bg-[#FF453A]/20 rounded-full transition-colors shadow-sm"
-                    >
-                        <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsEditOpen(true)}
+                            className="flex items-center px-3 py-2 bg-white dark:bg-[#1C1C1E] text-[#007AFF] border border-black/5 dark:border-white/10 rounded-full hover:bg-gray-50 dark:hover:bg-[#2C2C2E] font-medium transition-colors shadow-sm"
+                        >
+                            <Pencil size={16} className="mr-1" /> Düzenle
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            className="p-2.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] dark:text-[#FF453A] border border-black/5 dark:border-white/10 hover:bg-[#FF3B30]/10 dark:hover:bg-[#FF453A]/20 rounded-full transition-colors shadow-sm"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Kart */}
@@ -180,12 +219,20 @@ export default function ContactDetail() {
                                 Bağlı Kişiler ({contact.children.length})
                             </h3>
                             <HierarchyTree
-                                children={contact.children}
+                                nodes={contact.children}
                                 onSelect={(c) => router.push(`/contacts/${c.id}`)}
                             />
                         </div>
                     )}
                 </div>
+
+                <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Bilgiyi Güncelle">
+                    <ContactForm
+                        initialData={toInitialData(contact)}
+                        onSubmit={handleUpdate}
+                        isLoading={isUpdating}
+                    ></ContactForm>
+                </Modal>
             </div>
         </div>
     );

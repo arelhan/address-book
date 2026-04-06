@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { CreateContactInput } from '../types';
 import { PhoneInput } from './PhoneInput';
@@ -28,6 +28,26 @@ export function ContactForm({ initialData, onSubmit, isLoading }: Props) {
     const [showEmail, setShowEmail] = useState(!!initialData?.email);
     const [showAddress, setShowAddress] = useState(!!initialData?.address);
     const [showNotes, setShowNotes] = useState(!!initialData?.notes);
+
+    useEffect(() => {
+        setFormData({
+            type: initialData?.type || 'PERSON',
+            name: initialData?.name || '',
+            title: initialData?.title || '',
+            department: initialData?.department || '',
+            email: initialData?.email || '',
+            address: initialData?.address || '',
+            notes: initialData?.notes || '',
+            phones: initialData?.phones && initialData.phones.length > 0
+                ? initialData.phones
+                : [{ number: '', label: 'Cep' }],
+            parentId: initialData?.parentId || null,
+        });
+
+        setShowEmail(!!initialData?.email);
+        setShowAddress(!!initialData?.address);
+        setShowNotes(!!initialData?.notes);
+    }, [initialData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;

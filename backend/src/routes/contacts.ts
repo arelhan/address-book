@@ -4,6 +4,7 @@ import * as contactController from '../controllers/contactController';
 const router = Router();
 
 router.post('/bulk', contactController.bulkCreateContacts);
+router.post('/bulk-delete', contactController.bulkDeleteContacts);
 router.get('/count', contactController.getContactsCount);
 router.get('/search', contactController.searchContacts);
 router.get('/:id/children', contactController.getContactChildren);

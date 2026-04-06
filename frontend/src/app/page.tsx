@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ContactForm } from '@/components/ContactForm';
 import { useContacts } from '@/hooks/useContacts';
 import { ExcelImportModal } from '@/components/ExcelImportModal';
+import { CreateContactInput } from '@/types';
 
 export default function Home() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function Home() {
   const { create } = useContacts();
   const refreshCountRef = useRef<(() => void) | null>(null);
 
-  const handleCreate = async (data: any) => {
+  const handleCreate = async (data: CreateContactInput) => {
     try {
       await create(data);
       setIsModalOpen(false);
@@ -29,10 +30,14 @@ export default function Home() {
     refreshCountRef.current?.();
   };
 
+  const openContactDetail = (contactId: string) => {
+    router.push(`/contacts/${contactId}`);
+  };
+
   return (
     <main className="min-h-screen px-4 py-8">
       <SpotlightSearch
-        onContactClick={(c) => router.push(`/contacts/${c.id}`)}
+        onContactClick={(contact) => openContactDetail(contact.id)}
         registerRefreshCount={(fn) => { refreshCountRef.current = fn; }}
       />
 

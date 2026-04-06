@@ -2,6 +2,8 @@ services:
   backend:
     build:
       context: ./backend
+    ports:
+      - "4000:4000"
     expose:
       - "4000"
     environment:
@@ -19,6 +21,8 @@ services:
   frontend:
     build:
       context: ./frontend
+    ports:
+      - "3000:3000"
     environment:
       - SERVICE_FQDN_FRONTEND_3000
       - BACKEND_URL=http://backend:4000
