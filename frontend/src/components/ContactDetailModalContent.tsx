@@ -14,9 +14,10 @@ interface Props {
     onClose: () => void;
     onDeleted?: () => void;
     onNavigate?: (id: string) => void;
+    canManage?: boolean;
 }
 
-export function ContactDetailModalContent({ contactId, onClose, onDeleted, onNavigate }: Props) {
+export function ContactDetailModalContent({ contactId, onClose, onDeleted, onNavigate, canManage = false }: Props) {
     const [contact, setContact] = useState<Contact | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -28,7 +29,7 @@ export function ContactDetailModalContent({ contactId, onClose, onDeleted, onNav
     }, [contactId]);
 
     const handleDelete = async () => {
-        if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
+        if (!confirm('Bu kaydı pasif yapmak istediğinize emin misiniz?')) return;
 
         try {
             await api.deleteContact(contactId);
@@ -36,7 +37,7 @@ export function ContactDetailModalContent({ contactId, onClose, onDeleted, onNav
             onClose();
         } catch (err) {
             console.error(err);
-            alert('Silme sırasında hata oluştu.');
+            alert('Pasif yapma sırasında hata oluştu.');
         }
     };
 
@@ -96,22 +97,24 @@ export function ContactDetailModalContent({ contactId, onClose, onDeleted, onNav
                             <p className="mt-1 text-[15px] text-gray-500 dark:text-gray-400">{subtitle}</p>
                         )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsEditOpen(true)}
-                            className="flex items-center px-3 py-2 bg-white dark:bg-[#1C1C1E] text-[#007AFF] border border-black/5 dark:border-white/10 rounded-full hover:bg-gray-50 dark:hover:bg-[#2C2C2E] font-medium transition-colors shadow-sm"
-                        >
-                            <Pencil size={16} className="mr-1" /> Düzenle
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleDelete}
-                            className="p-2.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] dark:text-[#FF453A] border border-black/5 dark:border-white/10 hover:bg-[#FF3B30]/10 dark:hover:bg-[#FF453A]/20 rounded-full transition-colors shadow-sm"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    </div>
+                    {canManage && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsEditOpen(true)}
+                                className="flex items-center px-3 py-2 bg-white dark:bg-[#1C1C1E] text-[#007AFF] border border-black/5 dark:border-white/10 rounded-full hover:bg-gray-50 dark:hover:bg-[#2C2C2E] font-medium transition-colors shadow-sm"
+                            >
+                                <Pencil size={16} className="mr-1" /> Düzenle
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                className="p-2.5 bg-white dark:bg-[#1C1C1E] text-[#FF3B30] dark:text-[#FF453A] border border-black/5 dark:border-white/10 hover:bg-[#FF3B30]/10 dark:hover:bg-[#FF453A]/20 rounded-full transition-colors shadow-sm"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {contact.phones && contact.phones.length > 0 && (

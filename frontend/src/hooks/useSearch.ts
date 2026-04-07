@@ -14,6 +14,8 @@ function readStoredSearchState() {
             query?: string;
             results?: Contact[];
             showingAll?: boolean;
+            page?: number;
+            pageSize?: number;
         };
     } catch {
         return null;
@@ -28,6 +30,9 @@ export function useSearch(delay = 300) {
     const [isLoading, setIsLoading] = useState(false);
     const [count, setCount] = useState(0);
     const [showingAll, setShowingAll] = useState(stored?.showingAll || false);
+    const [page, setPage] = useState(stored?.page || 1);
+    const [pageSize, setPageSize] = useState(stored?.pageSize || 20);
+    const [total, setTotal] = useState(0);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -35,74 +40,98 @@ export function useSearch(delay = 300) {
         try {
             window.sessionStorage.setItem(
                 SEARCH_STATE_KEY,
-                JSON.stringify({ query, results, showingAll })
+                JSON.stringify({ query, results, showingAll, page, pageSize })
             );
         } catch {
             // Ignore persistence failures.
         }
-    }, [query, results, showingAll]);
+    }, [query, results, showingAll, page, pageSize]);
 
-    // Başlangıçta toplam sayıyı çek
     const refreshCount = useCallback(async () => {
         try {
             const c = await api.getContactsCount();
             setCount(c);
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error(error);
         }
     }, []);
 
     useEffect(() => {
-        refreshCount();
+        void refreshCount();
     }, [refreshCount]);
 
-    // Query değişince debounce
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedQuery(query), delay);
         return () => clearTimeout(timer);
     }, [query, delay]);
 
-    // Query girilince arama yap (ve showAll modunu kapat)
     useEffect(() => {
-        if (!debouncedQuery.trim()) {
-            if (!showingAll) setResults([]);
-            return;
-        }
-
-        setShowingAll(false);
         let isMounted = true;
-        setIsLoading(true);
 
-        api.searchContacts(debouncedQuery)
-            .then(data => {
-                if (isMounted) setResults(data);
-            })
-            .catch(console.error)
-            .finally(() => {
-                if (isMounted) setIsLoading(false);
-            });
+        const run = async () => {
+            if (debouncedQuery.trim()) {
+                setShowingAll(false);
+                setIsLoading(true);
 
-        return () => { isMounted = false; };
-    }, [debouncedQuery, showingAll]);
+                try {
+                    const data = await api.searchContacts(debouncedQuery, page, pageSize);
+                    if (isMounted) {
+                        setResults(data.items);
+                        setTotal(data.total);
+                    }
+                } catch (error) {
+                    console.error(error);
+                } finally {
+                    if (isMounted) setIsLoading(false);
+                }
+                return;
+            }
 
-    const loadAll = useCallback(async () => {
-        setIsLoading(true);
+            if (showingAll) {
+                setIsLoading(true);
+
+                try {
+                    const data = await api.getContacts(page, pageSize);
+                    if (isMounted) {
+                        setResults(data.items);
+                        setTotal(data.total);
+                    }
+                } catch (error) {
+                    console.error(error);
+                } finally {
+                    if (isMounted) setIsLoading(false);
+                }
+                return;
+            }
+
+            setResults([]);
+            setTotal(0);
+        };
+
+        void run();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [debouncedQuery, showingAll, page, pageSize]);
+
+    const loadAll = useCallback(() => {
+        setPage(1);
         setQuery('');
-        try {
-            const all = await api.getContacts();
-            setResults(all);
-            setShowingAll(true);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsLoading(false);
-        }
+        setDebouncedQuery('');
+        setShowingAll(true);
     }, []);
 
     const clearAll = useCallback(() => {
+        setPage(1);
+        setQuery('');
+        setDebouncedQuery('');
         setShowingAll(false);
         setResults([]);
+        setTotal(0);
     }, []);
+
+    const totalPages = Math.max(1, Math.ceil(total / Math.max(pageSize, 1)));
 
     return {
         query,
@@ -111,6 +140,12 @@ export function useSearch(delay = 300) {
         isLoading,
         count,
         showingAll,
+        page,
+        setPage,
+        pageSize,
+        setPageSize,
+        total,
+        totalPages,
         loadAll,
         clearAll,
         refreshCount,

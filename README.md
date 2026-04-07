@@ -1,51 +1,97 @@
-# Address Book - Yapilan Gelistirmeler
+# Address Book
 
-Bu dokuman, son gelistirme turunda Docker, arama deneyimi ve import performansi icin yapilan iyilestirmeleri ozetler.
+Yetkili adres defteri uygulamasi. Bu repo Docker ile calisir ve ilk kurulumda otomatik olarak super_admin olusturma akisi bulunur.
 
-## 1) Docker ve Yerel Ag Erisimi
+## Ozellikler
 
-- Frontend ve backend servisleri `0.0.0.0` uzerinden dinleyecek sekilde guncellendi.
-- `docker-compose.yml` ve `docker-compose.dev.yml` icinde host port publish ayarlari netlestirildi (`3000:3000`, `4000:4000`).
-- Dev acilis sureleri icin `Dockerfile.dev` dosyalari eklendi.
-- Her acilista agir kurulum calismamasi icin kosullu `npm ci` yaklasimi uygulandi.
+- Kisi ve firma kayitlari
+- Arama, sayfalama ve iki sutunlu kart gorunumu
+- Excel toplu yukleme
+- Toplu pasif hale getirme ve super_admin icin geri aktivasyon
+- Login, parola sifirlama ve rol tabanli erisim
+- Kullanici yonetimi
+- Audit log takibi
+- Ilk calistirmada setup sayfasi ile super_admin olusturma
 
-## 2) Kisi/Firma Yonetimi Ozellikleri
+## Gereksinimler
 
-- Toplu secip silme ozelligi eklendi.
-- Backend tarafina `bulk-delete` endpoint'i eklendi.
-- Detay sayfasinda bilgi duzenleme/guncelleme akisi iyilestirildi.
-- Geri tusuna basildiginda arama metni ve sonuclarinin korunmasi icin arama state'i kalici hale getirildi.
+- Docker
+- Docker Compose
 
-## 3) Buyuk Excel/CSV Import Iyilestirmesi
+## Hizli Baslangic
 
-650+ kayit ve gelecekte 10k+ kayit senaryolari icin import akisi guclendirildi:
+1. Projeyi acin.
+2. Uygulamayi calistirin:
 
-- Frontend import islemi tek istekte degil, parca parca (chunk) gonderilecek sekilde duzenlendi.
-- Import ilerleme durumu UI uzerinde gorunur hale getirildi.
-- Backend `bulk` endpoint'i `rowOffset` destegi aldi; hatali satir numaralari dogru raporlaniyor.
-- `BULK_IMPORT_MAX` ortam degiskeni ile tek istek ust limiti yonetilebilir hale getirildi.
-- JSON body limiti `JSON_LIMIT` ile konfigure edilebilir yapildi (varsayilan: `20mb`).
+```bash
+docker compose up -d --build
+```
 
-## 4) Test ve Dogrulama
+3. Tarayicida frontend'i acin:
 
-- Backend TypeScript derleme kontrolleri calistirildi.
-- Frontend degisen dosyalar icin lint kontrolleri calistirildi.
-- Chunk + rowOffset import davranisi canli endpoint uzerinde test edildi.
+- Frontend: http://localhost:3000
+- Backend: http://localhost:4000
+
+## Ilk Calistirma
+
+Eger veritabaninda henuz kullanici yoksa uygulama otomatik olarak setup akisine yonlenir.
+
+- Setup sayfasi: `/setup`
+- Bu sayfada ad soyad, kullanici adi, e-posta, TC, telefon ve parola girerek ilk `SUPER_ADMIN` hesabini olusturabilirsiniz.
+- Kurulum tamamlandiktan sonra uygulama dogrudan giris yapar.
+- Setup tamamlanmadan login sayfasi kullanilmaz.
+
+Setup ekranini elle acmak isterseniz:
+
+```text
+http://localhost:3000/setup
+```
+
+## Temiz Ilk Kurulum
+
+Eger uygulamayi baska bir bilgisayarda veya temiz bir veritabaniyla test etmek istiyorsaniz, volume'u sifirlayarak yeniden baslatabilirsiniz:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+Bu durumda uygulama tekrar setup sayfasini acacaktir.
+
+## Rol ve Erisim
+
+- `VIEWER`: Sadece goruntuleme
+- `ADMIN`: Kayit ekleme, guncelleme, pasif yapma
+- `SUPER_ADMIN`: Kullanici yonetimi, audit log, pasif kayitlari listeleme ve tekrar aktif etme
+
+## Pasif Kayitlar
+
+Silme islemi fiziksel olarak kayit silmez. Kayitlar pasife cekilir ve normal kullanicilara gorunmez.
+
+- Pasif kayitlar sayfasi sadece `SUPER_ADMIN` icindir.
+- Bu sayfadan kayitlari tekrar aktif edebilirsiniz.
 
 ## Ortam Degiskenleri
 
 Istege bagli olarak asagidaki degiskenleri kullanabilirsiniz:
 
+- `CORS_ORIGIN`: Izin verilen frontend origin'i. Varsayilan `http://localhost:3000`.
+- `JSON_LIMIT`: Backend JSON body limiti. Varsayilan `20mb`.
 - `BULK_IMPORT_MAX`: Tek import isteginde kabul edilen maksimum kayit sayisi.
-- `JSON_LIMIT`: Backend `express.json` limit degeri.
+- `BULK_DELETE_MAX`: Tek toplu pasiflestirme isteginde kabul edilen maksimum id sayisi.
+- `BULK_DELETE_CHUNK_SIZE`: Toplu pasiflestirmede kullanim chunk boyutu.
+- `AUTH_TOKEN_TTL_MS`: Token gecerlilik suresi.
+- `INITIAL_ADMIN_*`: Istege bagli ilk kurulum varsayilanlari.
 
-## Hizli Calistirma
+## Gelistirme
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d --build
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
-Ardindan uygulamaya su adreslerden erisebilirsiniz:
+## Notlar
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:4000`
+- Backend saglik kontrolu `/health` uzerinden calisir.
+- Arama Turkce karakter normalizasyonu destekler.
+- Login / setup / audit log akislari frontend proxy uzerinden backend'e iletilir.

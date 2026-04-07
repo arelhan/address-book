@@ -10,9 +10,102 @@ interface Props {
     selectable?: boolean;
     selected?: boolean;
     onToggleSelect?: (id: string) => void;
+    searchQuery?: string;
 }
 
-export function ContactCard({ contact, onClick, selectable = false, selected = false, onToggleSelect }: Props) {
+function normalizeSearchText(value: string) {
+    return value
+        .replaceAll('Ç', 'c')
+        .replaceAll('ç', 'c')
+        .replaceAll('Ğ', 'g')
+        .replaceAll('ğ', 'g')
+        .replaceAll('İ', 'i')
+        .replaceAll('I', 'i')
+        .replaceAll('ı', 'i')
+        .replaceAll('Ö', 'o')
+        .replaceAll('ö', 'o')
+        .replaceAll('Ş', 's')
+        .replaceAll('ş', 's')
+        .replaceAll('Ü', 'u')
+        .replaceAll('ü', 'u')
+        .toLowerCase();
+}
+
+function getHighlightRanges(text: string, query: string) {
+    const normalizedText = normalizeSearchText(text);
+    const tokens = normalizeSearchText(query)
+        .split(/\s+/)
+        .map(token => token.trim())
+        .filter(Boolean);
+
+    if (tokens.length === 0) return [] as Array<{ start: number; end: number }>;
+
+    const ranges: Array<{ start: number; end: number }> = [];
+
+    for (const token of tokens) {
+        let startIndex = 0;
+
+        while (startIndex <= normalizedText.length) {
+            const foundIndex = normalizedText.indexOf(token, startIndex);
+            if (foundIndex === -1) break;
+
+            ranges.push({ start: foundIndex, end: foundIndex + token.length });
+            startIndex = foundIndex + token.length;
+        }
+    }
+
+    ranges.sort((left, right) => left.start - right.start || left.end - right.end);
+
+    const mergedRanges: Array<{ start: number; end: number }> = [];
+
+    for (const range of ranges) {
+        const lastRange = mergedRanges[mergedRanges.length - 1];
+        if (lastRange && range.start <= lastRange.end) {
+            lastRange.end = Math.max(lastRange.end, range.end);
+            continue;
+        }
+
+        mergedRanges.push({ ...range });
+    }
+
+    return mergedRanges;
+}
+
+function renderHighlightedText(text: string, query?: string) {
+    const trimmedQuery = query?.trim() || '';
+    if (!trimmedQuery) return text;
+
+    const ranges = getHighlightRanges(text, trimmedQuery);
+    if (ranges.length === 0) return text;
+
+    const parts: React.ReactNode[] = [];
+    let cursor = 0;
+
+    ranges.forEach((range, index) => {
+        if (range.start > cursor) {
+            parts.push(text.slice(cursor, range.start));
+        }
+
+        parts.push(
+            <span
+                key={`${range.start}-${range.end}-${index}`}
+                className="rounded bg-[#007AFF]/12 px-0.5 text-[#007AFF] dark:bg-[#007AFF]/20 dark:text-[#8AB4FF]"
+            >
+                {text.slice(range.start, range.end)}
+            </span>
+        );
+
+        cursor = range.end;
+    });
+
+    if (cursor < text.length) {
+        parts.push(text.slice(cursor));
+    }
+
+    return parts;
+}
+
+export function ContactCard({ contact, onClick, selectable = false, selected = false, onToggleSelect, searchQuery }: Props) {
     const getIcon = () => {
         if (contact.type === 'PERSON') return <User size={16} className="mr-1" />;
         return <Building2 size={16} className="mr-1" />;
@@ -68,7 +161,7 @@ export function ContactCard({ contact, onClick, selectable = false, selected = f
             </div>
 
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate w-full tracking-tight" title={contact.name}>
-                {contact.name}
+                {renderHighlightedText(contact.name, searchQuery)}
             </h3>
             {(contact.title || contact.department) && (
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 truncate">

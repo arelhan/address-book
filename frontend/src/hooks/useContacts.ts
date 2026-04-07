@@ -10,7 +10,7 @@ export function useContacts() {
         try {
             setLoading(true);
             const data = await api.getContacts();
-            setContacts(data);
+            setContacts(data.items);
         } catch (err) {
             console.error(err);
         } finally {
