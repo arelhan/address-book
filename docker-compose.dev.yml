@@ -23,7 +23,7 @@ services:
       dockerfile: Dockerfile.dev
     working_dir: /app
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - BACKEND_URL=http://backend:4000
       - WATCHPACK_POLLING=true

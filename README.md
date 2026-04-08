@@ -29,7 +29,7 @@ docker compose up -d --build
 
 3. Tarayicida frontend'i acin:
 
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:3001
 - Backend: http://localhost:4000
 
 ## Ilk Calistirma
@@ -44,8 +44,26 @@ Eger veritabaninda henuz kullanici yoksa uygulama otomatik olarak setup akisine 
 Setup ekranini elle acmak isterseniz:
 
 ```text
-http://localhost:3000/setup
+http://localhost:3001/setup
 ```
+
+## Dokploy Ile Deploy (Tek Compose Dosyasi)
+
+Bu repo Dokploy uzerinde tek dosya ile deploy edilmeye uygundur. Ek bir compose dosyasi gerekmez, `docker-compose.yml` yeterlidir.
+
+1. Kodu Git reposuna push edin.
+2. Dokploy panelinde yeni bir Compose app olusturun.
+3. Repo baglantisini yapin ve compose path olarak `docker-compose.yml` secin.
+4. Gerekirse environment degiskenlerini Dokploy UI'dan override edin:
+	- `BACKEND_URL=http://backend:4000`
+	- `CORS_ORIGIN` (ozel domain kullaniyorsaniz frontend domainini girin)
+5. Deploy edin.
+
+Port notu:
+
+- Dokploy paneli host tarafinda 3000 kullandigi icin, bu repoda frontend host portu `3001` olarak ayarlandi (`3001:3000`).
+- Container ici frontend portu hala `3000` kaldigi icin Next.js ayarlari degismedi.
+- Dokploy domain routing kullaniyorsaniz host port publish etmek zorunlu degildir; bu ayar sadece localhost port cakismasini onler.
 
 ## Temiz Ilk Kurulum
 

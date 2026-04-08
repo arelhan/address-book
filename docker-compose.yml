@@ -22,7 +22,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - SERVICE_FQDN_FRONTEND_3000
       - BACKEND_URL=http://backend:4000
